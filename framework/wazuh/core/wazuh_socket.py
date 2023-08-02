@@ -1,8 +1,8 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-
 import asyncio
+import os.path
 import socket
 from json import dumps, loads
 from struct import pack, unpack
@@ -20,10 +20,21 @@ class WazuhSocket:
         self.path = path
         self._connect()
 
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __enter__(self):
+        return self
+
     def _connect(self):
         try:
             self.s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.s.connect(self.path)
+        except FileNotFoundError:
+            raise WazuhInternalError(1013, extra_message=os.path.basename(self.path))
+        except ConnectionRefusedError:
+            raise WazuhInternalError(1121, extra_message=f"Socket '{os.path.basename(self.path)}' cannot receive "
+                                                         "connections")
         except Exception as e:
             raise WazuhException(1013, str(e))
 
@@ -255,7 +266,8 @@ class WazuhAsyncSocketJSON(WazuhAsyncSocket):
 daemons = {
     "authd": {"protocol": "TCP", "path": common.AUTHD_SOCKET, "header_format": "<I", "size": 4},
     "task-manager": {"protocol": "TCP", "path": common.TASKS_SOCKET, "header_format": "<I", "size": 4},
-    "wazuh-db": {"protocol": "TCP", "path": common.WDB_SOCKET, "header_format": "<I", "size": 4}
+    "wazuh-db": {"protocol": "TCP", "path": common.WDB_SOCKET, "header_format": "<I", "size": 4},
+    "remoted": {"protocol": "TCP", "path": common.REMOTED_SOCKET, "header_format": "<I", "size": 4}
 }
 
 

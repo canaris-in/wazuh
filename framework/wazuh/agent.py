@@ -773,22 +773,12 @@ def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
                 raise WazuhResourceNotFound(1710)
             elif group_id == 'default':
                 raise WazuhError(1712)
-            with WazuhDBQueryMultigroups(group_id=group_id, limit=None) as db_query:
-                agent_list = [agent['id'] for agent in db_query.run()['items']]
 
-            try:
-                affected_agents_result = remove_agents_from_group(agent_list=agent_list, group_list=[group_id])
-                if affected_agents_result.total_failed_items != 0:
-                    raise WazuhError(4015)
-            except WazuhError:
-                raise WazuhError(4015)
             Agent.delete_single_group(group_id)
-            affected_agents_result.affected_items.sort(key=int)
-            result.affected_items.append({group_id: affected_agents_result.affected_items})
+            result.affected_items.append(group_id)
         except WazuhException as e:
             result.add_failed_item(id_=group_id, error=e)
 
-    result.affected_items.sort(key=lambda x: next(iter(x)))
     result.total_affected_items = len(result.affected_items)
 
     return result
@@ -1152,7 +1142,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         eligible_agents = [int(agent) for agent in eligible_agents]
 
         tasks_results = create_upgrade_tasks(eligible_agents=eligible_agents, chunk_size=UPGRADE_CHUNK_SIZE,
-                                             command='upgrade' if not installer or file_path else 'upgrade_custom',
+                                             command='upgrade' if not (installer or file_path) else 'upgrade_custom',
                                              wpk_repo=wpk_repo, version=version, force=force, use_http=use_http,
                                              file_path=file_path, installer=installer)
 

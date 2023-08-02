@@ -80,6 +80,8 @@ void RSyncTest::SetUp()
 
 void RSyncTest::TearDown()
 {
+    dbsync_teardown();
+    std::remove(DATABASE_TEMP);
     EXPECT_NO_THROW(rsync_teardown());
 };
 
@@ -347,9 +349,9 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
 
     ASSERT_EQ(0, rsync_start_sync(rsyncHandle, dbsyncHandle, jsSelect.get(), callbackData));
 
-    dbsync_teardown();
     EXPECT_EQ(messageCounter.load(), TOTAL_EXPECTED_MESSAGES);
 }
+
 TEST_F(RSyncTest, registerIncorrectSyncId)
 {
     const auto handle { rsync_create(THREAD_POOL_SIZE, MAX_QUEUE_SIZE) };
@@ -490,8 +492,6 @@ TEST_F(RSyncTest, RegisterAndPush)
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
     EXPECT_EQ(0, rsync_close(handle_rsync));
-
-    dbsync_teardown();
 }
 
 TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
@@ -565,8 +565,6 @@ TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
     EXPECT_EQ(0, rsync_close(handle_rsync));
-
-    dbsync_teardown();
 }
 
 TEST_F(RSyncTest, RegisterAndPushCPP)
@@ -1361,3 +1359,70 @@ TEST_F(RSyncTest, RegisterAndPushWithDoubleHandleDisconnect)
     remoteSync.reset();
 }
 
+TEST(RSyncBuilderRegisterConfigurationTest, TestExpectedHappyCase)
+{
+    auto registerConfig
+    {
+        RegisterConfiguration::builder().decoderType("JSON_RANGE")
+        .table("dbsync_osinfo")
+        .component("syscollector_osinfo")
+        .index("os_name")
+        .checksumField("checksum")
+        .noData(
+            QueryParameter::builder().rowFilter("WHERE os_name BETWEEN '?' and '?' ORDER BY os_name")
+        .columnList({"*"})
+        .distinctOpt(false)
+        .orderByOpt(""))
+        .countRange(
+            QueryParameter::builder().countFieldName("count")
+            .rowFilter("WHERE os_name BETWEEN '?' and '?' ORDER BY os_name")
+        .columnList({"count(*) AS count "})
+        .distinctOpt(false)
+        .orderByOpt(""))
+        .rowData(
+            QueryParameter::builder().rowFilter("WHERE os_name ='?'")
+        .columnList({"*"})
+        .distinctOpt(false)
+        .orderByOpt(""))
+        .rangeChecksum(
+            QueryParameter::builder().rowFilter("WHERE os_name BETWEEN '?' and '?' ORDER BY os_name")
+        .columnList({"*"})
+        .distinctOpt(false)
+        .orderByOpt(""))
+    };
+
+    EXPECT_EQ(registerConfig.config().dump(),
+              R"({"checksum_field":"checksum","component":"syscollector_osinfo","count_range_query_json":{"column_list":["count(*) AS count "],"count_field_name":"count","distinct_opt":false,"order_by_opt":"","row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name"},"decoder_type":"JSON_RANGE","index":"os_name","no_data_query_json":{"column_list":["*"],"distinct_opt":false,"order_by_opt":"","row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name"},"range_checksum_query_json":{"column_list":["*"],"distinct_opt":false,"order_by_opt":"","row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name"},"row_data_query_json":{"column_list":["*"],"distinct_opt":false,"order_by_opt":"","row_filter":"WHERE os_name ='?'"},"table":"dbsync_osinfo"})");
+}
+
+TEST(RSyncBuilderStartSyncConfigurationTest, TestExpectedHappyCase)
+{
+    auto startSyncConfig
+    {
+        StartSyncConfiguration::builder().component("syscollector_osinfo")
+        .table("dbsync_osinfo")
+        .index("os_name")
+        .checksumField("checksum")
+        .lastEvent("last_event")
+        .rangeChecksum(
+            QueryParameter::builder().rowFilter("WHERE os_name BETWEEN '?' and '?' ORDER BY os_name")
+        .columnList({"os_name", "checksum"})
+        .distinctOpt(false)
+        .orderByOpt("")
+        .countOpt(100))
+        .first(
+            QueryParameter::builder().rowFilter(" ")
+        .columnList({"os_name"})
+        .distinctOpt(false)
+        .orderByOpt("os_name DESC")
+        .countOpt(1))
+        .last(
+            QueryParameter::builder().rowFilter(" ")
+        .columnList({"os_name"})
+        .distinctOpt(false)
+        .orderByOpt("os_name ASC")
+        .countOpt(1))
+    };
+    EXPECT_EQ(startSyncConfig.config().dump(),
+              R"({"checksum_field":"checksum","component":"syscollector_osinfo","first_query":{"column_list":["os_name"],"count_opt":1,"distinct_opt":false,"order_by_opt":"os_name DESC","row_filter":" "},"index":"os_name","last_event":"last_event","last_query":{"column_list":["os_name"],"count_opt":1,"distinct_opt":false,"order_by_opt":"os_name ASC","row_filter":" "},"range_checksum_query_json":{"column_list":["os_name","checksum"],"count_opt":100,"distinct_opt":false,"order_by_opt":"","row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name"},"table":"dbsync_osinfo"})");
+}

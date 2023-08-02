@@ -40,12 +40,12 @@ info:
 
     <SecurityDefinitions />
 
-  version: '4.5.0'
-  x-revision: '40500'
+  version: '4.8.0'
+  x-revision: '40800'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/4.3/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/v4.8.0/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -530,6 +530,22 @@ x-rbac-catalog:
         actions: [ 'vulnerability:read' ]
         resources: [ 'agent:id:011', 'agent:group:us-west' ]
         effect: "allow"
+    'vulnerability:run':
+      description: "Allow running a vulnerability detector scan"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'vulnerability:run' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
+    'event:ingest':
+      description: "Ingest events"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['event:ingest']
+        resources: ['*:*:*']
+        effect: "allow"
 
 components:
   responses:
@@ -556,7 +572,7 @@ components:
             detail: "Permission denied: Resource type: *:*"
             remediation: "Please, make sure you have permissions to execute the current request. For more information
             on how to set up permissions, please visit
-            https://documentation.wazuh.com/4.3/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.8/user-manual/api/rbac/configuration.html"
             error: 4000
             dapi_errors:
               unknown-node:
@@ -623,7 +639,7 @@ components:
             title: "Wazuh Error"
             detail: "Maximum number of requests per minute reached"
             remediation: "This limit can be changed in api.yaml file. More information here:
-            https://documentation.wazuh.com/4.3/user-manual/api/security/configuration.html"
+            https://documentation.wazuh.com/4.8/user-manual/api/security/configuration.html"
             code: 6001
 
     ResourceNotFoundResponse:
@@ -636,7 +652,7 @@ components:
             title: "Resource Not Found"
             detail: "The group does not exist"
             remediation: "Please, use `GET /groups` to find all available groups:
-            https://documentation.wazuh.com/4.3/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.8/user-manual/api/rbac/configuration.html"
             code: 1710
             dapi_errors:
               unknown-node:
@@ -1464,9 +1480,7 @@ components:
       properties:
         affected_items:
           type: array
-          description: "List of removed groups with the agents which belonged to it and might have been reassigned to group default"
-          items:
-            $ref: '#/components/schemas/GroupDelete'
+          description: "List of removed groups, agents belonging exclusively to the removed groups will be reassigned to group default"
 
     AgentIdKey:
       type: object
@@ -1583,12 +1597,6 @@ components:
       minLength: 1
       description: "Group name|all"
       format: group_names_or_all
-
-    GroupDelete:
-      type: object
-      description: "Deleted group with a list of agents that were assigned to it"
-      additionalProperties:
-        type: array
 
     AgentConfiguration:
       type: object
@@ -1992,16 +2000,6 @@ components:
               properties:
                 last_keep_alive:
                   type: string
-                last_sync_agent_groups:
-                  type: object
-                  properties:
-                    date_start_master:
-                      type: string
-                    date_end_master:
-                      type: string
-                    total_agentgroups:
-                      type: integer
-                      format: int32
                 last_sync_agentinfo:
                   type: object
                   properties:
@@ -2012,12 +2010,22 @@ components:
                     n_synced_chunks:
                       type: integer
                       format: int32
-                last_sync_agentgroups:
+                last_sync_agentgroup:
                   type: object
                   properties:
-                    date_start_master:
+                    date_start:
                       type: string
-                    date_end_master:
+                    date_end:
+                      type: string
+                    n_synced_chunks:
+                      type: integer
+                      format: int32
+                last_sync_full_agentgroup:
+                  type: object
+                  properties:
+                    date_start:
+                      type: string
+                    date_end:
                       type: string
                     n_synced_chunks:
                       type: integer
@@ -2045,8 +2053,6 @@ components:
                           type: integer
                           format: int32
                 sync_agent_info_free:
-                  type: boolean
-                sync_agent_groups_free:
                   type: boolean
                 sync_integrity_free:
                   type: boolean
@@ -3882,7 +3888,7 @@ components:
           type: number
           format: float
           description: "Same as `alerts_written` but focusing in [FTS alerts]
-          (https://documentation.wazuh.com/4.3/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
+          (https://documentation.wazuh.com/4.8/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
           #fts)"
         hostinfo_queue_size:
           type: number
@@ -4377,7 +4383,7 @@ components:
           enum:
             - passed
             - failed
-            - ""
+            - "not applicable"
         title:
           type: string
           description: "A brief description of what is being checked"
@@ -5326,7 +5332,7 @@ components:
         </tr>
         <tr>
         <td>monitor</td>
-        <td>internal</td>
+        <td>reports</td>
         <td><code>&lt;reports&gt;</code></td>
         </tr>
         <tr>
@@ -6905,7 +6911,7 @@ components:
       required: True
       schema:
         type: string
-        format: wazuh_path
+        format: wpk_path
     installer:
       in: query
       name: installer
@@ -6987,7 +6993,6 @@ components:
         type: string
         format: xml_filename_path
 
-
 tags:
   - name: API Info
     description: "Wazuh API information"
@@ -7031,6 +7036,8 @@ tags:
     description: "Tasks information"
   - name: Vulnerability
     description: "Vulnerabilities information"
+  - name: Events
+    description: "Ingestion endpoints"
 
 security:
   - jwt: []
@@ -7057,10 +7064,10 @@ paths:
                     $ref: '#/components/schemas/BasicInfo'
               example:
                 title: "Wazuh API"
-                api_version: "v4.3.0"
+                api_version: "v4.5.0"
                 revision: '40100'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/4.3/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/v4.8.0/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
@@ -8251,9 +8258,7 @@ paths:
       description: "Delete all groups or a list of them"
       operationId: api.controllers.agent_controller.delete_groups
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
         - $ref: '#/x-rbac-catalog/actions/group:delete'
-        - $ref: '#/x-rbac-catalog/actions/group:modify_assignments'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8274,11 +8279,8 @@ paths:
               example:
                 data:
                   affected_items:
-                    - webserver:
-                        - '002'
-                        - '003'
-                    - dataserver:
-                        - '005'
+                    - webserver
+                    - dataserver
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
@@ -9215,8 +9217,8 @@ paths:
                           code: 1707
                           message: "Cannot send request, agent is not active"
                           remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/current/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/current/user-manual/agents/agent-connection.html
+                           Visit https://documentation.wazuh.com/4.8/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/4.8/user-manual/agents/agent-connection.html
                            to obtain more information on registering and connecting agents"
                         id:
                           - '009'
@@ -9542,15 +9544,15 @@ paths:
                   affected_items:
                     - name: master-node
                       type: master
-                      version: 4.3.0
+                      version: 4.4.0
                       ip: wazuh-master
                     - name: worker1
                       type: worker
-                      version: 4.3.0
+                      version: 4.4.0
                       ip: 172.26.0.7
                     - name: worker2
                       type: worker
-                      version: 4.3.0
+                      version: 4.4.0
                       ip: 172.26.0.6
                   total_affected_items: 3
                   total_failed_items: 0
@@ -9600,13 +9602,13 @@ paths:
                     - info:
                         name: master-node
                         type: master
-                        version: 4.3.0
+                        version: 4.4.0
                         ip: wazuh-master
                         n_active_agents: 5
                     - info:
                         name: worker1
                         type: worker
-                        version: 4.3.0
+                        version: 4.4.0
                         ip: 172.21.0.7
                         n_active_agents: 3
                       status:
@@ -9625,12 +9627,15 @@ paths:
                             extra_valid: 0
                             shared: 0
                         sync_agent_info_free: true
-                        sync_agent_groups_free: true
+                        last_sync_agentgroup:
+                            date_start: 2021-05-27T10:48:54.086973Z
+                            date_end: 2021-05-27T10:49:52.075794Z
+                            n_synced_chunks: 1
+                        last_sync_full_agentgroup:
+                            date_start: 2021-05-27T10:52:48.038573Z
+                            date_end: 2021-05-27T10:53:23.057795Z
+                            n_synced_chunks: 2
                         last_sync_agentinfo:
-                          date_start_master: 2021-05-27T10:50:49.174463Z
-                          date_end_master: 2021-05-27T10:50:49.175921Z
-                          n_synced_chunks: 1
-                        last_sync_agentgroups:
                           date_start_master: 2021-05-27T10:50:49.174463Z
                           date_end_master: 2021-05-27T10:50:49.175921Z
                           n_synced_chunks: 1
@@ -9638,7 +9643,7 @@ paths:
                     - info:
                         name: worker2
                         type: worker
-                        version: 4.3.0
+                        version: 4.4.0
                         ip: 172.21.0.6
                         n_active_agents: 1
                       status:
@@ -9657,12 +9662,15 @@ paths:
                             extra_valid: 0
                             shared: 0
                         sync_agent_info_free: true
-                        sync_agent_groups_free: true
-                        last_sync_agentinfo:
-                          date_start_master: 2021-05-27T10:50:48.832800Z
-                          date_end_master: 2021-05-27T10:50:48.833854Z
+                        last_sync_agentgroup:
+                          date_start: 2021-05-27T10:48:54.086973Z
+                          date_end: 2021-05-27T10:49:52.075794Z
                           n_synced_chunks: 1
-                        last_sync_agentgroups:
+                        last_sync_full_agentgroup:
+                          date_start: 2021-05-27T10:52:48.038573Z
+                          date_end: 2021-05-27T10:53:23.057795Z
+                          n_synced_chunks: 2
+                        last_sync_agentinfo:
                           date_start_master: 2021-05-27T10:50:48.832800Z
                           date_end_master: 2021-05-27T10:50:48.833854Z
                           n_synced_chunks: 1
@@ -10294,7 +10302,6 @@ paths:
                         synchronization:
                           enabled: yes
                           interval: "5m"
-                          max_interval: "1h"
                           max_eps: 10
                       command:
                         - name: disable-account
@@ -11641,7 +11648,7 @@ paths:
                       name: "wazuh"
                       node: "master-node"
                     full_log: "ERROR"
-                    decoder:
+                    decoder: None
                     location: "/var/log/syslog"
                   alert: false
                   codemsg: 1
@@ -13988,6 +13995,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
         - $ref: '#/components/parameters/raw'
+        - $ref: '#/components/parameters/get_dirnames_path'
       responses:
         '200':
           description: "Rule content"
@@ -14310,7 +14318,6 @@ paths:
         - $ref: '#/components/parameters/rationale'
         - $ref: '#/components/parameters/remediation'
         - $ref: '#/components/parameters/command'
-        - $ref: '#/components/parameters/status'
         - $ref: '#/components/parameters/reason'
         - $ref: '#/components/parameters/full_path_filter'
         - $ref: '#/components/parameters/process'
@@ -14341,21 +14348,20 @@ paths:
               example:
                 data:
                   affected_items:
-                    - description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in 
+                    - description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in
                       small footprint systems. A cramfs image can be used without having to first decompress the image."
                       id: 19000
                       reason: "Invalid path or wrong permissions to run command 'modprobe -n -v cramfs'"
                       command: "modprobe -n -v cramfs,lsmod"
-                      rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the 
+                      rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the
                       server. If this filesystem type is not needed, disable it."
                       condition: "all"
                       title: "Ensure mounting of cramfs filesystems is disabled."
-                      result: ""
+                      result: "not applicable"
                       policy_id: "cis_ubuntu20-04"
-                      remediation: "1) Edit or create a file in the /etc/modprobe.d/ directory ending in .conf and add 
-                      the following line: install cramfs /bin/true. 2) Run the following command to unload the cramfs 
+                      remediation: "1) Edit or create a file in the /etc/modprobe.d/ directory ending in .conf and add
+                      the following line: install cramfs /bin/true. 2) Run the following command to unload the cramfs
                       module: # rmmod cramfs"
-                      status: "Not applicable"
                       compliance:
                         - value: "1.1.1.1"
                           key: "cis"
@@ -14766,6 +14772,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
         - $ref: '#/components/parameters/raw'
+        - $ref: '#/components/parameters/get_dirnames_path'
       responses:
         '200':
           description: "Decoder content"
@@ -16766,7 +16773,7 @@ paths:
                       tgid: 1
                       share: 729
                       rgroup: "root"
-                      argvs: "/scripts/entrypoint.sh nginx-lb 4.3"
+                      argvs: "/scripts/entrypoint.sh nginx-lb 4.4"
                       start_time: 1217866
                       stime: 0
                       vm_size: 3984
@@ -18849,6 +18856,47 @@ paths:
                 message: "All specified task's status were returned"
                 error: 0
 
+  /vulnerability:
+    put:
+      tags:
+        - Vulnerability
+      summary: "Run vulnerability detector scan"
+      description: "Run a vulnerability detector scan in all nodes"
+      operationId: api.controllers.vulnerability_controller.run_vulnerability_scan
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/vulnerability:run'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Run vulnerability detector scan"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - master-node
+                    - worker1
+                    - worker2
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: "A vulnerability detector scan was requested in all nodes"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
   /vulnerability/{agent_id}:
     get:
       tags:
@@ -19019,6 +19067,70 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /events:
+    post:
+      tags:
+      - Events
+      summary: "Ingest events"
+      description: |-
+        Send security events to analysisd.
+
+        The endpoint is limited to receiving a max of 30 requests per minute and a max bulk size of 100 events per request.
+      operationId: api.controllers.event_controller.forward_event
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/event:ingest'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    description: "Bulk of events"
+                    type: array
+                    items:
+                      type: string
+                required:
+                - events
+              example:
+                events:
+                  - "Event value 1"
+                  - "{\"someKey\": \"Event value 2\"}"
+      responses:
+        '200':
+          description: "Events accepted"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - "Event value 1"
+                    - "{\"someKey\": \"Event value 2\"}"
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: "All events were forwarded to analisysd"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
 externalDocs:
   description: "Find more about Wazuh API usage"
-  url: 'https://documentation.wazuh.com/4.3/user-manual/api/index.html'
+  url: 'https://documentation.wazuh.com/4.8/user-manual/api/index.html'

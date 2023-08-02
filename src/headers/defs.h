@@ -67,7 +67,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v4.5.0"
+#define __ossec_version "v4.8.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -189,9 +189,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Default group name */
 #define DEFAULT_GROUP "default"
-
-/* Syscheck directory */
-#define SYSCHECK_DIR    "queue/syscheck"
 
 /* Syscollector normalization configs */
 #ifdef WAZUH_UNIT_TESTING

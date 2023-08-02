@@ -11,7 +11,6 @@ from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, WAZUH_VERSION, AGENT_NAME_
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 DOCU_VERSION = 'current' if WAZUH_VERSION == '' else '.'.join(WAZUH_VERSION.split('.')[:2]).lstrip('v')
 
-
 class WazuhException(Exception):
     """
     Wazuh Exception object.
@@ -50,6 +49,9 @@ class WazuhException(Exception):
         1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
         1018: 'Body request is not a valid JSON',
         1019: 'Error trying to create backup file',
+        1020: {'message': 'Could not find any Wazuh log file',
+               'remediation': 'Please check `WAZUH_HOME/logs`'},
+
         # Configuration: 1100 - 1199
         1101: {'message': 'Requested component does not exist',
                'remediation': 'Run `WAZUH_PATH/bin/wazuh-logtest -t` to check your configuration'},
@@ -92,7 +94,8 @@ class WazuhException(Exception):
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
         1119: "Directory '/tmp' needs read, write & execution permission for 'wazuh' user",
-        1121: {'message': "Error connecting with socket"},
+        1121: {'message': "Error connecting with socket",
+               'remediation': "Please ensure the selected module is running and properly configured"},
         1122: {'message': 'Experimental features are disabled',
                'remediation': 'Experimental features can be enabled in WAZUH_PATH/api/configuration/api.yaml or '
                               f"using API endpoint https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/"
@@ -113,8 +116,9 @@ class WazuhException(Exception):
         1126: {'message': 'Error updating ossec configuration',
                'remediation': 'Please, ensure `WAZUH_PATH/etc/ossec.conf` has the proper permissions and ownership.'
                },
-        1127: {'message': 'Forbidden section detected',
-               'remediation': 'To solve this issue, please enable the section in the API settings: '
+        1127: {'message': 'Protected section was modified',
+               'remediation': 'To solve this, either revert the changes made to this section or disable the protection '
+                              'in the API settings: '
                               f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
         1128: {'message': 'Invalid configuration for the given component'},
 
@@ -209,12 +213,6 @@ class WazuhException(Exception):
                },
 
         # Syscheck/AR: 1600 - 1699
-        1600: {'message': 'There is no database for selected agent with id',
-               'remediation': 'Please, upgrade wazuh to v3.7.0 or newer. Visit '
-                              f'https://documentation.wazuh.com/{DOCU_VERSION}/upgrade-guide/index.html'
-                              ' to obtain more information on upgrading wazuh'
-               },
-
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
         1650: 'Active response - Command not specified',
 
@@ -475,9 +473,6 @@ class WazuhException(Exception):
                               'POST /security/roles/{role_id}/policies'},
         4011: {'message': 'The specified role-policy link already exist'},
         4013: {'message': 'The specified name already exists'},
-        4015: {'message': 'Permission denied, could not remove agents from group before deleting it',
-               'remediation': 'Please, make sure you have the right permissions for actions: agent:modify_group and '
-                              'group:modify_assignments before attempting to delete the group'},
         4016: {'message': 'The specified user-role relation does not exist',
                'remediation': 'Please, create the specified user-role relation with the endpoint '
                               'POST /security/user/{username}/roles'},
@@ -521,6 +516,8 @@ class WazuhException(Exception):
                'remediation': 'The value of the allow_run_as parameter must be true (enabled authentication through '
                               'authorization context) or false (disabled authentication through authorization context).'
                },
+        5011: {'message': 'Administrator users can only be modified by themselves',
+               'remediation': 'Log in as administrator and try again'},
 
         # Security issues
         6000: {'message': 'Limit of login attempts reached. '
@@ -537,19 +534,25 @@ class WazuhException(Exception):
                'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/api/reference.html#operation/api.controllers.'
                               f'security_controller.edit_run_as'},
+        6005: {'message': 'Maximum number of requests per minute reached'},
 
         # Logtest
         7000: {'message': 'Error trying to get logtest response'},
         7001: {'message': 'Error trying to read logtest session token',
-               'remediation': 'Make sure you introduce the token within the field "token"'}
+               'remediation': 'Make sure you introduce the token within the field "token"'},
 
-        # > 9000: Authd
+        # Vulnerability detector
+        8000: {'message': 'Unexpected error trying to request vulnerability detector scan'}
     }
 
     # Reserve agent upgrade custom errors
     ERRORS.update({key: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
                                     'The error message will be the output of upgrade module'}
                    for key in range(1811, 1900)})
+    # Reserve agent upgrade custom errors
+    ERRORS.update({key: {'message': 'Vulnerability scan\'s reserved exception IDs (8001-9000). '
+                                    'The error message will be the output of vulnerability scan module'}
+                   for key in range(8001, 9000)})
 
     def __init__(self, code: int, extra_message: str = None, extra_remediation: str = None, cmd_error: bool = False,
                  dapi_errors: dict = None, title: str = None, type: str = None):
@@ -581,28 +584,28 @@ class WazuhException(Exception):
         self._cmd_error = cmd_error
         self._dapi_errors = {} if dapi_errors is None else deepcopy(dapi_errors)
 
-        error_details = self.ERRORS[self._code] if not cmd_error else extra_message
-        if isinstance(error_details, dict):
-            code_message, code_remediation = error_details.get('message', ''), error_details.get('remediation', None)
-        else:
-            code_message, code_remediation = error_details, None
+        if not cmd_error and self._code in self.ERRORS:
+            error_details = self.ERRORS[self._code]
+            if isinstance(error_details, dict):
+                code_message, code_remediation = error_details.get('message', ''), error_details.get('remediation', None)
+            else:
+                code_message, code_remediation = error_details, None
 
-        if not cmd_error:
             if extra_message:
                 if isinstance(extra_message, dict):
                     self._message = code_message.format(**extra_message)
                 else:
-                    self._message = "{0}: {1}".format(code_message, extra_message)
+                    self._message = f"{code_message}: {extra_message}"
             else:
                 self._message = code_message
+            self._remediation = code_remediation if extra_remediation is None \
+                else f"{code_remediation}: {extra_remediation}"
         else:
             self._message = extra_message
-
-        self._remediation = code_remediation if extra_remediation is None \
-            else f"{code_remediation}: {extra_remediation}"
+            self._remediation = None
 
     def __str__(self):
-        return "Error {0} - {1}".format(self._code, self._message)
+        return f"Error {self._code} - {self._message}"
 
     def __repr__(self):
         return repr(self.to_dict())

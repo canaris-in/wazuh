@@ -127,6 +127,30 @@ void w_inc_agent_close_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
+void w_inc_agent_vacuum() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.agent_breakdown.vacuum_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_agent_vacuum_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.vacuum_time, &time, &wdb_state.queries_breakdown.agent_breakdown.vacuum_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_agent_get_fragmentation() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.agent_breakdown.get_fragmentation_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_agent_get_fragmentation_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.get_fragmentation_time, &time, &wdb_state.queries_breakdown.agent_breakdown.get_fragmentation_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
 void w_inc_agent_rootcheck() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.agent_breakdown.rootcheck.rootcheck_queries++;
@@ -514,6 +538,18 @@ void w_inc_global_agent_update_connection_status_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
+void w_inc_global_agent_update_status_code() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.global_breakdown.agent.update_status_code_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_global_agent_update_status_code_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.global_breakdown.agent.update_status_code_time, &time, &wdb_state.queries_breakdown.global_breakdown.agent.update_status_code_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
 void w_inc_global_agent_reset_agents_connection() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.global_breakdown.agent.reset_agents_connection_queries++;
@@ -595,6 +631,18 @@ void w_inc_global_agent_get_all_agents() {
 void w_inc_global_agent_get_all_agents_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
     timeradd(&wdb_state.queries_breakdown.global_breakdown.agent.get_all_agents_time, &time, &wdb_state.queries_breakdown.global_breakdown.agent.get_all_agents_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_global_agent_get_distinct_groups() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.global_breakdown.agent.get_distinct_groups_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_global_agent_get_distinct_groups_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.global_breakdown.agent.get_distinct_groups_time, &time, &wdb_state.queries_breakdown.global_breakdown.agent.get_distinct_groups_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
@@ -763,6 +811,30 @@ void w_inc_global_labels_get_labels() {
 void w_inc_global_labels_get_labels_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
     timeradd(&wdb_state.queries_breakdown.global_breakdown.labels.get_labels_time, &time, &wdb_state.queries_breakdown.global_breakdown.labels.get_labels_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_global_vacuum() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.global_breakdown.vacuum_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_global_vacuum_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.global_breakdown.vacuum_time, &time, &wdb_state.queries_breakdown.global_breakdown.vacuum_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_global_get_fragmentation() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.global_breakdown.get_fragmentation_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_global_get_fragmentation_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.global_breakdown.get_fragmentation_time, &time, &wdb_state.queries_breakdown.global_breakdown.get_fragmentation_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
@@ -937,6 +1009,8 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_agent_db, "commit", wdb_state_cpy.queries_breakdown.agent_breakdown.commit_queries);
     cJSON_AddNumberToObject(_agent_db, "remove", wdb_state_cpy.queries_breakdown.agent_breakdown.remove_queries);
     cJSON_AddNumberToObject(_agent_db, "sql", wdb_state_cpy.queries_breakdown.agent_breakdown.sql_queries);
+    cJSON_AddNumberToObject(_agent_db, "vacuum", wdb_state_cpy.queries_breakdown.agent_breakdown.vacuum_queries);
+    cJSON_AddNumberToObject(_agent_db, "get_fragmentation", wdb_state_cpy.queries_breakdown.agent_breakdown.get_fragmentation_queries);
 
     cJSON *_agent_tables = cJSON_CreateObject();
     cJSON_AddItemToObject(_agent_breakdown, "tables", _agent_tables);
@@ -1009,6 +1083,8 @@ cJSON* wdb_create_state_json() {
 
     cJSON_AddNumberToObject(_global_db, "backup", wdb_state_cpy.queries_breakdown.global_breakdown.backup_queries);
     cJSON_AddNumberToObject(_global_db, "sql", wdb_state_cpy.queries_breakdown.global_breakdown.sql_queries);
+    cJSON_AddNumberToObject(_global_db, "vacuum", wdb_state_cpy.queries_breakdown.global_breakdown.vacuum_queries);
+    cJSON_AddNumberToObject(_global_db, "get_fragmentation", wdb_state_cpy.queries_breakdown.global_breakdown.get_fragmentation_queries);
 
     cJSON *_global_tables = cJSON_CreateObject();
     cJSON_AddItemToObject(_global_breakdown, "tables", _global_tables);
@@ -1022,6 +1098,7 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_global_tables_agent, "get-agent-info", wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_agent_info_queries);
     cJSON_AddNumberToObject(_global_tables_agent, "get-agents-by-connection-status", wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_agents_by_connection_status_queries);
     cJSON_AddNumberToObject(_global_tables_agent, "get-all-agents", wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_all_agents_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "get-distinct-groups", wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_distinct_groups_queries);
     cJSON_AddNumberToObject(_global_tables_agent, "get-groups-integrity", wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_groups_integrity_queries);
     cJSON_AddNumberToObject(_global_tables_agent, "insert-agent", wdb_state_cpy.queries_breakdown.global_breakdown.agent.insert_agent_queries);
     cJSON_AddNumberToObject(_global_tables_agent, "reset-agents-connection", wdb_state_cpy.queries_breakdown.global_breakdown.agent.reset_agents_connection_queries);
@@ -1034,6 +1111,7 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_global_tables_agent, "update-agent-data", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_agent_data_queries);
     cJSON_AddNumberToObject(_global_tables_agent, "update-agent-name", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_agent_name_queries);
     cJSON_AddNumberToObject(_global_tables_agent, "update-connection-status", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_connection_status_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "update-status-code", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_status_code_queries);
     cJSON_AddNumberToObject(_global_tables_agent, "update-keepalive", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_keepalive_queries);
 
     cJSON *_global_tables_belongs = cJSON_CreateObject();
@@ -1121,6 +1199,8 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_agent_db_t, "commit", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.commit_time));
     cJSON_AddNumberToObject(_agent_db_t, "remove", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.remove_time));
     cJSON_AddNumberToObject(_agent_db_t, "sql", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.sql_time));
+    cJSON_AddNumberToObject(_agent_db_t, "vacuum", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.vacuum_time));
+    cJSON_AddNumberToObject(_agent_db_t, "get_fragmentation", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.get_fragmentation_time));
 
     cJSON *_agent_tables_t = cJSON_CreateObject();
     cJSON_AddItemToObject(_agent_breakdown_t, "tables", _agent_tables_t);
@@ -1193,6 +1273,8 @@ cJSON* wdb_create_state_json() {
 
     cJSON_AddNumberToObject(_global_db_t, "backup", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.backup_time));
     cJSON_AddNumberToObject(_global_db_t, "sql", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.sql_time));
+    cJSON_AddNumberToObject(_global_db_t, "vacuum", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.vacuum_time));
+    cJSON_AddNumberToObject(_global_db_t, "get_fragmentation", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.get_fragmentation_time));
 
     cJSON *_global_tables_t = cJSON_CreateObject();
     cJSON_AddItemToObject(_global_breakdown_t, "tables", _global_tables_t);
@@ -1206,6 +1288,7 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_global_tables_agent_t, "get-agent-info", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_agent_info_time));
     cJSON_AddNumberToObject(_global_tables_agent_t, "get-agents-by-connection-status", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_agents_by_connection_status_time));
     cJSON_AddNumberToObject(_global_tables_agent_t, "get-all-agents", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_all_agents_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "get-distinct-groups", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_distinct_groups_time));
     cJSON_AddNumberToObject(_global_tables_agent_t, "get-groups-integrity", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_groups_integrity_time));
     cJSON_AddNumberToObject(_global_tables_agent_t, "insert-agent", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.insert_agent_time));
     cJSON_AddNumberToObject(_global_tables_agent_t, "reset-agents-connection", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.reset_agents_connection_time));
@@ -1218,6 +1301,7 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_global_tables_agent_t, "update-agent-data", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_agent_data_time));
     cJSON_AddNumberToObject(_global_tables_agent_t, "update-agent-name", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_agent_name_time));
     cJSON_AddNumberToObject(_global_tables_agent_t, "update-connection-status", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_connection_status_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "update-status-code", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_status_code_time));
     cJSON_AddNumberToObject(_global_tables_agent_t, "update-keepalive", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_keepalive_time));
 
     cJSON *_global_tables_belongs_t = cJSON_CreateObject();
@@ -1291,6 +1375,8 @@ STATIC uint64_t get_agent_time(wdb_state_t *state){
     struct timeval task_time;
 
     timeradd(&state->queries_breakdown.agent_breakdown.sql_time, &state->queries_breakdown.agent_breakdown.remove_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.vacuum_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.get_fragmentation_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.begin_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.commit_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.close_time, &task_time);
@@ -1328,11 +1414,14 @@ STATIC uint64_t get_global_time(wdb_state_t *state){
     struct timeval task_time;
 
     timeradd(&state->queries_breakdown.global_breakdown.sql_time, &state->queries_breakdown.global_breakdown.backup_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.vacuum_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.get_fragmentation_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.insert_agent_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.update_agent_data_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.update_agent_name_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.update_keepalive_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.update_connection_status_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.update_status_code_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.reset_agents_connection_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.delete_agent_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.select_agent_name_time, &task_time);
@@ -1340,6 +1429,7 @@ STATIC uint64_t get_global_time(wdb_state_t *state){
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.find_agent_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.get_agent_info_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.get_all_agents_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.get_distinct_groups_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.get_agents_by_connection_status_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.disconnect_agents_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.sync_agent_info_get_time, &task_time);
